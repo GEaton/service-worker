@@ -48,14 +48,17 @@ if (workbox) {
     cacheName: "documents",
     plugins: [
       new workbox.expiration.Plugin({
-        maxEntries: 10,
-        maxAgeSeconds: 30 * 24 * 60 * 60 // 30 Days
+        maxEntries: 3
       })
     ]
   });
 
   workbox.routing.registerRoute(/\.(?:html)$/, args => {
-    return statDocuments.handle(args);
+    return statDocuments.handle(args)
+    
+    .catch(() => {
+        return caches.match('pages/offline.html');
+    });
   });
 
   /** Static ressources : JS and CSS */

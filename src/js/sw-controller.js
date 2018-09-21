@@ -1,46 +1,50 @@
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then(registration => {
-      window.console.log(
-        `Service Worker registered! Scope: ${registration.scope}`
-      );
-      registration.update();
-      window.console.info(`Service Worker updated!`);
-      
-      if(registration.waiting && 'installed' === registration.waiting.state){
-        return askUser();
+      const Worker = navigator.serviceWorker;
+
+      // if there is a worker waiting and installed
+      if (registration.waiting && "installed" === registration.waiting.state) {
+        return informUser();
       }
 
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
+      // Listen worker update
+      listenWorkerUpdate(registration);
 
-        newWorker.addEventListener("statechange", () => {
-          window.console.log("App: Nouvel état :", newWorker.state);
-
-          if ("installed" === newWorker.state) {
-            askUser();
-          }
-        });
-      });
+      // force worker update
+      registration.update();
     });
   });
+}
 
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    console.log("controller change");
-    window.alert(
-        `La nouvelle mise à jour a bien été activé 
-(la page de votre navigateur va être actualisé pour finaliser la procédure.)`
-      );
-      window.location.reload();
+function listenWorkerUpdate(_registration) {
+  _registration.addEventListener("updatefound", () => {
+    const newWorker = _registration.installing;
+    // listen changing state of new worker
+    newWorker.addEventListener("statechange", () => {
+      if ("installed" === newWorker.state) {
+        informUser();
+      }
+    });
   });
+}
 
-  function askUser(){
-    let userChoice = confirm(`Une nouvelle mise à jour est disponible.
-Voulez-vous l'activer ?`);
-            if (userChoice) {
-              navigator.serviceWorker.getRegistration().then(registration => {
-                registration.waiting.postMessage("skipWaiting");
-              });
-            }
-  }
+function informUser() {
+  listenWorkerControllerChange();
+  sendMessageToWorker("skipWaiting");
+}
+
+function listenWorkerControllerChange() {
+  Worker.addEventListener("controllerchange", () => {
+    window.alert(
+      `Une nouvelle mise à jour est disponible, la page de votre navigateur va être actualisée pour finaliser la procédure.`
+    );
+    window.location.reload();
+  });
+}
+
+function sendMessageToWorker(_message) {
+  Worker.getRegistration().then(registration => {
+    registration.waiting.postMessage(_message);
+  });
 }
